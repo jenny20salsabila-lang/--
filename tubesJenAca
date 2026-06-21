@@ -1,0 +1,734 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type Jurusan struct {
+	KodeJurusan string
+	NamaJurusan string
+	Kapasitas   int
+}
+
+type Mahasiswa struct {
+	NomorPendaftaran string
+	Nama             string
+	KodeJurusan      string
+	NilaiTes         float64
+	Status           string
+}
+
+const NMAX_JURUSAN = 20
+const NMAX_MAHASISWA = 100
+
+type TabJurusan [NMAX_JURUSAN]Jurusan
+type TabMahasiswa [NMAX_MAHASISWA]Mahasiswa
+
+var (
+	daftarJurusan   TabJurusan
+	jumlahJurusan   int
+	daftarMahasiswa TabMahasiswa
+	jumlahMahasiswa int
+	counterPendaftaran  int
+)
+
+var reader = bufio.NewReader(os.Stdin)
+
+func inputString(prompt string) string {
+	fmt.Print(prompt)
+	s, _ := reader.ReadString('\n')
+	return strings.TrimSpace(s)
+}
+  
+func inputKapasitas(prompt string) (int, bool) {
+	fmt.Print(prompt)
+	s, _ := reader.ReadString('\n')
+	s = strings.TrimSpace(s)
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+func inputNilai(prompt string) (float64, bool) {
+	fmt.Print(prompt)
+	s, _ := reader.ReadString('\n')
+	s = strings.TrimSpace(s)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, false
+	}
+	return f, true
+}
+
+func inputMenu(prompt string) int {
+	fmt.Print(prompt)
+	s, _ := reader.ReadString('\n')
+	s = strings.TrimSpace(s)
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		fmt.Println("Input tidak valid, harap masukkan angka.")
+		return -99
+	}
+	return n
+}
+
+func generateNomorPendaftaran() string {
+	counterPendaftaran++
+	return fmt.Sprintf("%02d", counterPendaftaran)
+}
+
+func cariJurusan(kode string) int {
+	idx := -1
+	i := 0
+	for i < jumlahJurusan && idx == -1 {
+		if daftarJurusan[i].KodeJurusan == kode {
+			idx = i
+		}
+		i++
+	}
+	return idx
+}
+
+func cariMahasiswaSeq(nomor string) int {
+	idx := -1
+	i := 0
+	for i < jumlahMahasiswa && idx == -1 {
+		if daftarMahasiswa[i].NomorPendaftaran == nomor {
+			idx = i
+		}
+		i++
+	}
+	return idx
+}
+
+func cariMahasiswaBin(nomor string) int {
+	lo := 0
+	hi := jumlahMahasiswa - 1
+	hasil := -1
+	for lo <= hi && hasil == -1 {
+		mid := (lo + hi) / 2
+		if daftarMahasiswa[mid].NomorPendaftaran == nomor {
+			hasil = mid
+		} else if daftarMahasiswa[mid].NomorPendaftaran < nomor {
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return hasil
+}
+
+func insertionSortByNomor(arr *TabMahasiswa, n int, ascending bool) {
+	i := 1
+	for i < n {
+		kunci := arr[i]
+		j := i - 1
+		for j >= 0 {
+			harusGeser := false
+			if ascending {
+				harusGeser = arr[j].NomorPendaftaran > kunci.NomorPendaftaran
+			} else {
+				harusGeser = arr[j].NomorPendaftaran < kunci.NomorPendaftaran
+			}
+			if harusGeser {
+				arr[j+1] = arr[j]
+				j--
+			} else {
+				j = -1
+			}
+		}
+		arr[j+1] = kunci
+		i++
+	}
+}
+
+func selectionSortByNilai(arr *TabMahasiswa, n int, ascending bool) {
+	i := 0
+	for i < n-1 {
+		idx := i
+		j := i + 1
+		for j < n {
+			lebihKecil := arr[j].NilaiTes < arr[idx].NilaiTes
+			lebihBesar := arr[j].NilaiTes > arr[idx].NilaiTes
+			if (ascending && lebihKecil) || (!ascending && lebihBesar) {
+				idx = j
+			}
+			j++
+		}
+		if idx != i {
+			arr[i], arr[idx] = arr[idx], arr[i]
+		}
+		i++
+	}
+}
+
+func selectionSortByJurusan(arr *TabMahasiswa, n int, ascending bool) {
+	i := 0
+	for i < n-1 {
+		idx := i
+		j := i + 1
+		for j < n {
+			lebihKecil := arr[j].KodeJurusan < arr[idx].KodeJurusan
+			lebihBesar := arr[j].KodeJurusan > arr[idx].KodeJurusan
+			if (ascending && lebihKecil) || (!ascending && lebihBesar) {
+				idx = j
+			}
+			j++
+		}
+		if idx != i {
+			arr[i], arr[idx] = arr[idx], arr[i]
+		}
+		i++
+	}
+}
+
+func insertionSortByNama(arr *TabMahasiswa, n int, ascending bool) {
+	i := 1
+	for i < n {
+		kunci := arr[i]
+		j := i - 1
+		for j >= 0 {
+			harusGeser := false
+			if ascending {
+				harusGeser = arr[j].Nama > kunci.Nama
+			} else {
+				harusGeser = arr[j].Nama < kunci.Nama
+			}
+			if harusGeser {
+				arr[j+1] = arr[j]
+				j--
+			} else {
+				j = -1
+			}
+		}
+		arr[j+1] = kunci
+		i++
+	}
+}
+
+func hitungJumlahDiterima(kode string) int {
+	jumlah := 0
+	i := 0
+	for i < jumlahMahasiswa {
+		if daftarMahasiswa[i].KodeJurusan == kode && daftarMahasiswa[i].Status == "Diterima" {
+			jumlah++
+		}
+		i++
+	}
+	return jumlah
+}
+
+func hitungStatus(nilai float64, kapasitas int, kode string) string {
+	status := "Ditolak"
+	if nilai >= 60 && hitungJumlahDiterima(kode) < kapasitas {
+		status = "Diterima"
+	}
+	return status
+}
+
+func pilihUrutan(label string) bool {
+	fmt.Printf("  Urutan %s (1=Ascending, 2=Descending): ", label)
+	n := inputMenu("")
+	return n == 1
+}
+
+func garis(panjang int) {
+	i := 0
+	for i < panjang {
+		fmt.Print("-")
+		i++
+	}
+	fmt.Println()
+}
+
+func tampilkanDaftarJurusanRingkas() {
+	fmt.Println("\n  Daftar Jurusan Tersedia:")
+	garis(60)
+	fmt.Printf("  %-8s %-26s %-10s\n", "Kode", "Nama Jurusan", "Kuota (Sisa)")
+	garis(60)
+	i := 0
+	for i < jumlahJurusan {
+		diterima := hitungJumlahDiterima(daftarJurusan[i].KodeJurusan)
+		sisa := daftarJurusan[i].Kapasitas - diterima
+		fmt.Printf("  %-8s %-26s %d/%d (sisa: %d)\n",
+			daftarJurusan[i].KodeJurusan,
+			daftarJurusan[i].NamaJurusan,
+			diterima,
+			daftarJurusan[i].Kapasitas,
+			sisa)
+		i++
+	}
+	garis(60)
+}
+
+func inisialisasiJurusan() {
+	daftarJurusan[0] = Jurusan{"IT", "Information Technology", 43}
+	daftarJurusan[1] = Jurusan{"RPL", "Rekayasa Perangkat Lunak", 40}
+	daftarJurusan[2] = Jurusan{"IF", "Teknik Informatika", 45}
+	daftarJurusan[3] = Jurusan{"DS", "Data Sains", 37}
+	jumlahJurusan = 4
+}
+
+func cetakHeaderTabel() {
+	garis(72)
+	fmt.Printf("  %-6s %-6s %-20s %-6s %-7s %-10s\n",
+		"No", "NoPdf", "Nama", "Jur", "Nilai", "Status")
+	garis(72)
+}
+
+func cetakBarisTabel(no int, m Mahasiswa) {
+	fmt.Printf("  %-6d %-6s %-20s %-6s %-7.2f %-10s\n",
+		no, m.NomorPendaftaran, m.Nama, m.KodeJurusan, m.NilaiTes, m.Status)
+}
+
+func cetakTabelMahasiswa(arr TabMahasiswa, n int) {
+	if n == 0 {
+		fmt.Println("  (tidak ada data)")
+		return
+	}
+	cetakHeaderTabel()
+	i := 0
+	for i < n {
+		cetakBarisTabel(i+1, arr[i])
+		i++
+	}
+	garis(72)
+	fmt.Printf("  Total: %d mahasiswa\n", n)
+}
+
+func tambahJurusan() {
+	if jumlahJurusan >= NMAX_JURUSAN {
+		fmt.Println("Data jurusan sudah penuh!")
+		return
+	}
+	fmt.Println("\n  -- TAMBAH JURUSAN --")
+	kode := inputString("  Kode Jurusan : ")
+	if cariJurusan(kode) != -1 {
+		fmt.Println("Kode jurusan sudah ada!")
+		return
+	}
+	nama := inputString("  Nama Jurusan : ")
+	kapasitas, ok := inputKapasitas("  Kapasitas    : ")
+	if !ok {
+		fmt.Println("Kapasitas tidak valid.")
+		return
+	}
+	daftarJurusan[jumlahJurusan] = Jurusan{kode, nama, kapasitas}
+	jumlahJurusan++
+	fmt.Println("Jurusan berhasil ditambahkan!")
+}
+
+func editJurusan() {
+	fmt.Println("\n  -- EDIT JURUSAN --")
+	kode := inputString("  Kode Jurusan yang diedit : ")
+	idx := cariJurusan(kode)
+	if idx == -1 {
+		fmt.Println("Jurusan tidak ditemukan.")
+		return
+	}
+	fmt.Printf("  Nama saat ini  : %s\n", daftarJurusan[idx].NamaJurusan)
+	fmt.Printf("  Kapasitas      : %d\n", daftarJurusan[idx].Kapasitas)
+	daftarJurusan[idx].NamaJurusan = inputString("  Nama baru      : ")
+	kapasitas, ok := inputKapasitas("  Kapasitas baru : ")
+	if !ok {
+		fmt.Println("Kapasitas tidak valid.")
+		return
+	}
+	daftarJurusan[idx].Kapasitas = kapasitas
+	fmt.Println("Jurusan berhasil diubah!")
+}
+
+func hapusJurusan() {
+	fmt.Println("\n  -- HAPUS JURUSAN --")
+	kode := inputString("  Kode Jurusan yang dihapus : ")
+	idx := cariJurusan(kode)
+	if idx == -1 {
+		fmt.Println("Jurusan tidak ditemukan.")
+		return
+	}
+	i := idx
+	for i < jumlahJurusan-1 {
+		daftarJurusan[i] = daftarJurusan[i+1]
+		i++
+	}
+	daftarJurusan[jumlahJurusan-1] = Jurusan{}
+	jumlahJurusan--
+	fmt.Println("Jurusan berhasil dihapus!")
+}
+
+func tampilkanJurusan() {
+	fmt.Println("\n  -- DAFTAR JURUSAN --")
+	if jumlahJurusan == 0 {
+		fmt.Println("  (belum ada data jurusan)")
+		return
+	}
+	garis(54)
+	fmt.Printf("  %-4s %-8s %-24s %-10s\n", "No", "Kode", "Nama Jurusan", "Kapasitas")
+	garis(54)
+	i := 0
+	for i < jumlahJurusan {
+		diterima := hitungJumlahDiterima(daftarJurusan[i].KodeJurusan)
+		fmt.Printf("  %-4d %-8s %-24s %d/%d\n",
+			i+1,
+			daftarJurusan[i].KodeJurusan,
+			daftarJurusan[i].NamaJurusan,
+			diterima,
+			daftarJurusan[i].Kapasitas)
+		i++
+	}
+	garis(54)
+	fmt.Printf("  Total jurusan: %d\n", jumlahJurusan)
+}
+
+func tambahMahasiswa() {
+	if jumlahMahasiswa >= NMAX_MAHASISWA {
+		fmt.Println("Data mahasiswa sudah penuh!")
+		return
+	}
+
+	fmt.Println("\n  -- FORM PENDAFTARAN MAHASISWA --")
+	tampilkanDaftarJurusanRingkas()
+
+	fmt.Println()
+
+	nomor := generateNomorPendaftaran()
+	fmt.Printf("  No. Pendaftaran  : %s\n", nomor)
+
+	nama := inputString("  Nama Lengkap     : ")
+	kode := inputString("  Kode Jurusan     : ")
+	idxJ := cariJurusan(kode)
+	if idxJ == -1 {
+		fmt.Println("Kode jurusan tidak ditemukan!")
+		return
+	}
+	nilai, ok := inputNilai("  Nilai Tes (0-100): ")
+	if !ok {
+		fmt.Println("Nilai tidak valid.")
+		return
+	}
+
+	status := hitungStatus(nilai, daftarJurusan[idxJ].Kapasitas, kode)
+	daftarMahasiswa[jumlahMahasiswa] = Mahasiswa{nomor, nama, kode, nilai, status}
+	jumlahMahasiswa++
+
+	fmt.Printf("\n  %s berhasil didaftarkan! (No. Pendaftaran: %s)\n", nama, nomor)
+	if status == "Diterima" {
+		fmt.Printf("  Status: DITERIMA  (%.2f >= 60, kuota tersedia)\n", nilai)
+	} else if nilai < 60 {
+		fmt.Printf("  Status: DITOLAK   (%.2f < 60, tidak memenuhi syarat)\n", nilai)
+	} else {
+		fmt.Printf("  Status: DITOLAK   (%.2f >= 60, kuota jurusan penuh)\n", nilai)
+	}
+}
+
+func editMahasiswa() {
+	fmt.Println("\n  -- EDIT DATA MAHASISWA --")
+	nomor := inputString("  No. Pendaftaran yang diedit : ")
+	idx := cariMahasiswaSeq(nomor)
+	if idx == -1 {
+		fmt.Println("Mahasiswa tidak ditemukan.")
+		return
+	}
+	fmt.Printf("  Nama saat ini   : %s\n", daftarMahasiswa[idx].Nama)
+	fmt.Printf("  Jurusan         : %s\n", daftarMahasiswa[idx].KodeJurusan)
+
+	tampilkanDaftarJurusanRingkas()
+	fmt.Println()
+
+	daftarMahasiswa[idx].Nama = inputString("  Nama baru       : ")
+	kode := inputString("  Kode Jurusan    : ")
+	if cariJurusan(kode) == -1 {
+		fmt.Println("Kode tidak valid, jurusan tidak diubah.")
+	} else {
+		daftarMahasiswa[idx].KodeJurusan = kode
+	}
+	fmt.Println("  Data mahasiswa berhasil diubah!")
+}
+
+func hapusMahasiswa() {
+	fmt.Println("\n  -- HAPUS DATA MAHASISWA --")
+	nomor := inputString("  No. Pendaftaran yang dihapus : ")
+	idx := cariMahasiswaSeq(nomor)
+	if idx == -1 {
+		fmt.Println("Mahasiswa tidak ditemukan.")
+		return
+	}
+	i := idx
+	for i < jumlahMahasiswa-1 {
+		daftarMahasiswa[i] = daftarMahasiswa[i+1]
+		i++
+	}
+	daftarMahasiswa[jumlahMahasiswa-1] = Mahasiswa{}
+	jumlahMahasiswa--
+	fmt.Println("  Mahasiswa berhasil dihapus!")
+}
+
+func tampilkanMahasiswaPerJurusan() {
+	fmt.Println("\n  -- TAMPILKAN MAHASISWA PER JURUSAN --")
+	tampilkanDaftarJurusanRingkas()
+	fmt.Println()
+	kode := inputString("  Kode Jurusan : ")
+	idx := cariJurusan(kode)
+	if idx == -1 {
+		fmt.Println("Jurusan tidak ditemukan.")
+		return
+	}
+
+	diterima := hitungJumlahDiterima(kode)
+	fmt.Printf("\n  Jurusan  : %s - %s\n", kode, daftarJurusan[idx].NamaJurusan)
+	fmt.Printf("  Kuota    : %d  |  Terisi: %d\n", daftarJurusan[idx].Kapasitas, diterima)
+
+	var arrDiterima, arrDitolak, arrPending TabMahasiswa
+	nD, nT, nP := 0, 0, 0
+	i := 0
+	for i < jumlahMahasiswa {
+		m := daftarMahasiswa[i]
+		if m.KodeJurusan == kode {
+			if m.Status == "Diterima" {
+				arrDiterima[nD] = m
+				nD++
+			} else if m.Status == "Ditolak" {
+				arrDitolak[nT] = m
+				nT++
+			} else {
+				arrPending[nP] = m
+				nP++
+			}
+		}
+		i++
+	}
+
+	fmt.Println("\n  DITERIMA")
+	cetakTabelMahasiswa(arrDiterima, nD)
+	fmt.Println("\n  DITOLAK")
+	cetakTabelMahasiswa(arrDitolak, nT)
+	fmt.Println("\n  PENDING (belum ada nilai)")
+	cetakTabelMahasiswa(arrPending, nP)
+}
+
+func editNilaiTes() {
+	fmt.Println("\n  -- EDIT NILAI TES --")
+	nomor := inputString("  No. Pendaftaran   : ")
+	idx := cariMahasiswaSeq(nomor)
+	if idx == -1 {
+		fmt.Println("Mahasiswa tidak ditemukan.")
+		return
+	}
+	fmt.Printf("  Nilai saat ini    : %.2f\n", daftarMahasiswa[idx].NilaiTes)
+	nilai, ok := inputNilai("  Nilai baru        : ")
+	if !ok {
+		fmt.Println("Nilai tidak valid.")
+		return
+	}
+	daftarMahasiswa[idx].NilaiTes = nilai
+	idxJ := cariJurusan(daftarMahasiswa[idx].KodeJurusan)
+	if idxJ != -1 {
+		daftarMahasiswa[idx].Status = hitungStatus(nilai, daftarJurusan[idxJ].Kapasitas, daftarMahasiswa[idx].KodeJurusan)
+	}
+	fmt.Printf("  Nilai diubah. Status sekarang: %s\n", daftarMahasiswa[idx].Status)
+}
+
+func hapusNilaiTes() {
+	fmt.Println("\n  -- HAPUS NILAI TES --")
+	nomor := inputString("  No. Pendaftaran : ")
+	idx := cariMahasiswaSeq(nomor)
+	if idx == -1 {
+		fmt.Println("Mahasiswa tidak ditemukan.")
+		return
+	}
+	daftarMahasiswa[idx].NilaiTes = 0
+	daftarMahasiswa[idx].Status = "Pending"
+	fmt.Println("  Nilai dihapus. Status kembali: Pending")
+}
+
+func tampilkanTerurut() {
+	if jumlahMahasiswa == 0 {
+		fmt.Println("Belum ada data mahasiswa.")
+		return
+	}
+	fmt.Println("\n  -- TAMPILKAN DATA TERURUT --")
+	fmt.Println("  1. Nilai Tes       (Selection Sort)")
+	fmt.Println("  2. Jurusan         (Selection Sort)")
+	fmt.Println("  3. Nama Mahasiswa  (Insertion Sort)")
+	pilihan := inputMenu("  Pilihan : ")
+
+	var arrLokal TabMahasiswa
+	i := 0
+	for i < jumlahMahasiswa {
+		arrLokal[i] = daftarMahasiswa[i]
+		i++
+	}
+
+	label := ""
+	ascending := true
+
+	if pilihan == 1 {
+		ascending = pilihUrutan("Nilai Tes")
+		selectionSortByNilai(&arrLokal, jumlahMahasiswa, ascending)
+		label = "NILAI TES"
+	} else if pilihan == 2 {
+		ascending = pilihUrutan("Jurusan")
+		selectionSortByJurusan(&arrLokal, jumlahMahasiswa, ascending)
+		label = "JURUSAN"
+	} else if pilihan == 3 {
+		ascending = pilihUrutan("Nama")
+		insertionSortByNama(&arrLokal, jumlahMahasiswa, ascending)
+		label = "NAMA"
+	} else {
+		fmt.Println("Pilihan tidak valid.")
+		return
+	}
+
+	urutan := "Ascending"
+	if !ascending {
+		urutan = "Descending"
+	}
+	fmt.Printf("\n  Urut berdasarkan %s (%s)\n", label, urutan)
+	cetakTabelMahasiswa(arrLokal, jumlahMahasiswa)
+} 
+
+func cariMahasiswa() {
+	fmt.Println("\n  -- CARI MAHASISWA --")
+	fmt.Println("  1. Sequential Search")
+	fmt.Println("  2. Binary Search")
+	pilihan := inputMenu("  Pilihan : ")
+	if pilihan != 1 && pilihan != 2 {
+		fmt.Println("Pilihan tidak valid.")
+		return
+	}
+	nomor := inputString("  No. Pendaftaran yang dicari : ")
+
+	idx := -1
+	if pilihan == 1 {
+		idx = cariMahasiswaSeq(nomor)
+	} else {
+		idx = cariMahasiswaBin(nomor)
+	}
+
+	if idx == -1 {
+		fmt.Println("Mahasiswa tidak ditemukan.")
+		return
+	}
+
+	m := daftarMahasiswa[idx]
+	idxJ := cariJurusan(m.KodeJurusan)
+	namaJurusan := m.KodeJurusan
+	if idxJ != -1 {
+		namaJurusan = daftarJurusan[idxJ].NamaJurusan
+	}
+	fmt.Println("\n  Data mahasiswa ditemukan:")
+	garis(42)
+	fmt.Printf("  No. Pendaftaran : %s\n", m.NomorPendaftaran)
+	fmt.Printf("  Nama            : %s\n", m.Nama)
+	fmt.Printf("  Jurusan         : %s - %s\n", m.KodeJurusan, namaJurusan)
+	fmt.Printf("  Nilai           : %.2f\n", m.NilaiTes)
+	fmt.Printf("  Status          : %s\n", m.Status)
+	garis(42)
+}
+
+func menuJurusan() {
+	lanjut := true
+	for lanjut {
+		fmt.Println("\n==========================================")
+		fmt.Println("  MENU JURUSAN")
+		fmt.Println("  1. Tambah Jurusan")
+		fmt.Println("  2. Edit Jurusan")
+		fmt.Println("  3. Hapus Jurusan")
+		fmt.Println("  4. Tampilkan Semua Jurusan")
+		fmt.Println("  0. Kembali")
+		fmt.Println("==========================================")
+		pilihan := inputMenu("  Pilihan: ")
+
+		if pilihan == 1 {
+			tambahJurusan()
+		} else if pilihan == 2 {
+			editJurusan()
+		} else if pilihan == 3 {
+			hapusJurusan()
+		} else if pilihan == 4 {
+			tampilkanJurusan()
+		} else if pilihan == 0 {
+			lanjut = false
+		} else {
+			fmt.Println("Pilihan tidak valid.")
+		}
+	}
+}
+
+func menuMahasiswa() {
+	lanjut := true
+	for lanjut {
+		fmt.Println("\n==========================================")
+		fmt.Println("  MENU MAHASISWA")
+		fmt.Println("  1. Daftarkan Mahasiswa Baru")
+		fmt.Println("  2. Edit Data Mahasiswa")
+		fmt.Println("  3. Hapus Data Mahasiswa")
+		fmt.Println("  4. Tampilkan Mahasiswa per Jurusan")
+		fmt.Println("  5. Edit Nilai Tes")
+		fmt.Println("  6. Hapus Nilai Tes")
+		fmt.Println("  0. Kembali")
+		fmt.Println("==========================================")
+		pilihan := inputMenu("  Pilihan: ")
+
+		if pilihan == 1 {
+			tambahMahasiswa()
+		} else if pilihan == 2 {
+			editMahasiswa()
+		} else if pilihan == 3 {
+			hapusMahasiswa()
+		} else if pilihan == 4 {
+			tampilkanMahasiswaPerJurusan()
+		} else if pilihan == 5 {
+			editNilaiTes()
+		} else if pilihan == 6 {
+			hapusNilaiTes()
+		} else if pilihan == 0 {
+			lanjut = false
+		} else {
+			fmt.Println("Pilihan tidak valid.")
+		}
+	}
+}
+
+func main() {
+	inisialisasiJurusan()
+
+	fmt.Println("============================================")
+	fmt.Println("      APLIKASI PENDAFTARAN MAHASISWA        ")
+	fmt.Println("             Perguruan Tinggi               ")
+	fmt.Println("============================================")
+
+	lanjut := true
+	for lanjut {
+		fmt.Println("\n==========================================")
+		fmt.Println("  MENU UTAMA")
+		fmt.Println("  1. Manajemen Jurusan")
+		fmt.Println("  2. Manajemen Mahasiswa")
+		fmt.Println("  3. Tampilkan Data Terurut")
+		fmt.Println("  4. Cari Mahasiswa")
+		fmt.Println("  0. Keluar")
+		fmt.Println("==========================================")
+		pilihan := inputMenu("  Pilihan: ")
+
+		if pilihan == 1 {
+			menuJurusan()
+		} else if pilihan == 2 {
+			menuMahasiswa()
+		} else if pilihan == 3 {
+			tampilkanTerurut()
+		} else if pilihan == 4 {
+			cariMahasiswa()
+		} else if pilihan == 0 {
+			fmt.Println("\n  Terima kasih. Program selesai.")
+			lanjut = false
+		} else {
+			fmt.Println("Pilihan tidak valid.")
+		}
+	}
+}
